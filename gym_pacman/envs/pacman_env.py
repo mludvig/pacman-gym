@@ -15,12 +15,13 @@ import gym
 from gym import spaces
 import numpy as np
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s %(message)s', level=logging.DEBUG)
 
 
 class BoardStatus(IntEnum):
     EMPTY = 0
     DOT = 1
+    PACMAN = 2
 
 
 class Action(IntEnum):
@@ -49,26 +50,42 @@ class PacManEnv(gym.Env):
 
     __version__ = "0.0.1"
 
-    def __init__(self):
-        logging.info("PacManEnv - Version %s", self.__version__)
+    def __init__(self, additional_simulator_parameters={}):
+        """
+        Initialise the environment.
+
+        Parameters
+        ----------
+        All OpenAI-Gym parameters, including:
+        additional_simulator_parameters : dict
+            board_size: (int, int)      defaults to (10, 10)
+            max_moves: int              defaults to 1000
+
+        """
+        print("PacMan-v0 version: %s" % self.__version__)
+        print("numpy version: %s" % np.__version__)
+        print("gym version: %s" % gym.__version__)
 
         # Playing board size
-        self._board_size = (10, 10)
+        self._board_size = additional_simulator_parameters.get('board_size', (5, 5))
+        self._board = np.full(self._board_size, BoardStatus.DOT)
+        logging.debug("Board size: %s", self._board_size)
+
+        # Maximum number of moves
+        self._max_moves = additional_simulator_parameters.get('max_moves', 500)
+        logging.debug("Max moves: %s", self._max_moves)
 
         # The actions the agent can choose from (must be named 'self.action_space')
         self.action_space = spaces.Discrete(max(Action) + 1)
 
         # Observation is what we return back to the agent
-        self.observation_space = spaces.Dict({
-            "board_status": spaces.Box(
-                low=np.array(np.full(self._board_size, min(BoardStatus))),
-                high=np.array(np.full(self._board_size, max(BoardStatus))),
-                dtype=np.int32),
-            "position": spaces.Box(
-                low=np.array((0,0)),
-                high=np.array(self._board_size),
-                dtype=np.int32),
-        })
+        self.observation_space = spaces.Box(
+               low=np.full(self._board_size, min(BoardStatus)).flatten(),
+               high=np.full(self._board_size, max(BoardStatus)).flatten(),
+               dtype=np.int32)
+
+        # Episode counter
+        self._episode = 0
 
         self.reset()
 
@@ -82,16 +99,22 @@ class PacManEnv(gym.Env):
         """
 
         # Random pacman position
-        self.position = np.random.randint(self._board_size)
+        self.position = np.array([
+            np.random.randint(self._board_size[0]),
+            np.random.randint(self._board_size[1]),
+        ])
 
         # Initialise the board
-        self.board = np.full(self._board_size, BoardStatus.DOT)
-        self._set_cell_value(self.position, BoardStatus.EMPTY)  # That's where PacMan starts
+        self._board = np.full(self._board_size, BoardStatus.DOT)
+        self._set_cell_value(self.position, BoardStatus.PACMAN)
 
         # Episode is not yet over
         self.is_over = False
 
-        logging.debug("reset() -> {}".format(self.position))
+        # Count some stats
+        self._episode += 1
+        self._nr_moves = 0
+
         return self._get_observation()
 
     def step(self, action):
@@ -113,6 +136,12 @@ class PacManEnv(gym.Env):
         # Each step costs 1 reward point
         reward = -1
 
+        # Increment moves
+        self._nr_moves += 1
+
+        # Clear cell before updating position
+        self._set_cell_value(self.position, BoardStatus.EMPTY)
+
         # Is it a valid move?
         if action == Action.UP and self.position[0] > 0:
             self.position[0] -= 1
@@ -124,29 +153,36 @@ class PacManEnv(gym.Env):
             self.position[1] += 1
         # else we don't change position
 
+        # Move PacMan to the new position
         if self._get_cell_value(self.position) == BoardStatus.DOT:
             reward += 1
+            #self._set_cell_value(self.position, BoardStatus.EMPTY)
+        self._set_cell_value(self.position, BoardStatus.PACMAN)
 
-        self._set_cell_value(self.position, BoardStatus.EMPTY)
+        # If there are no more dots the episode is over
+        if np.count_nonzero(self._board == BoardStatus.DOT) == 0:
+            logging.debug("Board cleared in %s steps", self._nr_moves)
+            self.is_over = True
+
+        # If the agent has done 1000+ moves and still didn't clear the board the episode is over too
+        elif self._nr_moves >= self._max_moves:
+            print("Board not cleared")
+            self.is_over = True
 
         ret = (self._get_observation(), reward, self.is_over, {})
-        logging.debug("step({}) -> {} {}".format(Action(action), self.position, reward))
         return ret
 
     def _get_cell_value(self, position):
-        return self.board[position[0]][position[1]]
+        return self._board[position[0]][position[1]]
 
     def _set_cell_value(self, position, value):
-        self.board[position[0]][position[1]] = value
+        self._board[position[0]][position[1]] = value
 
     def _get_observation(self):
-        return {
-            "board_status": self.board,
-            "position": self.position,
-        }
+        return self._board.flatten()
 
     def render(self, mode='human'):
-        raise NotImplementedError
+        return
 
     def seed(self, seed=None):
         """
