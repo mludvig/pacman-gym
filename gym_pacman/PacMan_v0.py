@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
 """
-PacMan simulator
+PacMan simulator v0
+
+This environment returns 'observation' as a flattened numpy array of BoardStatus values.
+The PacMan position is shown on the array (cell with BoardStatus.PACMAN value).
 
 By Michael Ludvig
 """
 
-import logging.config
-import math
+import logging
 import random
 from enum import IntEnum
 
@@ -31,7 +33,7 @@ class Action(IntEnum):
     RIGHT = 3
 
 
-class PacManEnv(gym.Env):
+class PacMan_v0(gym.Env):
     """
     The environment defines which actions can be taken at which point and
     when the agent receives which reward.

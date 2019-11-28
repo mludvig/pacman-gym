@@ -5,5 +5,5 @@ logger = logging.getLogger(__name__)
 
 register(
     id='PacMan-v0',
-    entry_point='gym_pacman.envs:PacManEnv',
+    entry_point='gym_pacman.PacMan_v0:PacMan_v0',
 )
