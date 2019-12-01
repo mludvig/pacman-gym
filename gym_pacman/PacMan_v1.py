@@ -52,9 +52,7 @@ class PacMan_v1(gym.Env):
     - visiting a new cell is -1 + 1 = 0
     """
 
-    __version__ = "0.0.1"
-
-    def __init__(self, additional_simulator_parameters={}):
+    def __init__(self, board_size=(5,5), max_moves=100):
         """
         Initialise the environment.
 
@@ -63,30 +61,41 @@ class PacMan_v1(gym.Env):
         All OpenAI-Gym parameters, including:
         additional_simulator_parameters : dict
             board_size: (int, int)      defaults to (10, 10)
-            max_moves: int              defaults to 1000
+            max_moves: int              defaults to 2000
 
         """
-        print("PacMan-v0 version: %s" % self.__version__)
-        print("numpy version: %s" % np.__version__)
-        print("gym version: %s" % gym.__version__)
+        super(PacMan_v1, self).__init__()
+
+        print("%s environment" % (self.__class__.__name__))
+        logging.debug("numpy version: %s", np.__version__)
+        logging.debug("gym version: %s", gym.__version__)
 
         # Playing board size
-        self._board_size = additional_simulator_parameters.get('board_size', (5, 5))
+        #self._board_size = additional_simulator_parameters.get('board_size', (5, 5))
+        self._board_size = board_size
         logging.debug("Board size: %s", self._board_size)
 
         # Maximum number of moves
-        self._max_moves = additional_simulator_parameters.get('max_moves', 500)
+        #self._max_moves = additional_simulator_parameters.get('max_moves', 500)
+        self._max_moves = max_moves
         logging.debug("Max moves: %s", self._max_moves)
 
         # The actions the agent can choose from (must be named 'self.action_space')
         self.action_space = spaces.Discrete(max(Action) + 1)
 
         # Observation is what we return back to the agent
-        self.observation_space = spaces.Box(
-            low = min(BoardStatus),
-            high = max(BoardStatus),
-            shape=(3, 10, 10),
-            dtype=np.int32)
+        self.observation_space = spaces.Dict({
+            'board': spaces.Box(low=min(BoardStatus), high=max(BoardStatus),
+                            #shape=self._board_size,
+                            shape=(self._board_size[0]*self._board_size[1],)
+                        ),
+            'position': spaces.Box(low=min(BoardStatus), high=max(BoardStatus),
+                            #shape=self._board_size,
+                            shape=(self._board_size[0]*self._board_size[1],)
+                        ),
+        })
+        #observation_shape = list(self._board_size) + [2]    # shape = [box[0], box[1], num_layers]
+        #self.observation_space = spaces.Box(low=min(BoardStatus), high=max(BoardStatus), shape=observation_shape, dtype=np.uint32)
 
         # Episode counter
         self._episode = 0
@@ -104,9 +113,9 @@ class PacMan_v1(gym.Env):
 
 
         # Initialise the observation layers
-        self._layer_0_board = np.full(self._board_size, BoardStatus.DOT, dtype=np.uint32)
-        self._layer_1_pacman = np.full(self._board_size, BoardStatus.EMPTY, dtype=np.uint32)
-        self._layer_2_empty = np.full(self._board_size, BoardStatus.EMPTY, dtype=np.uint32)
+        self._layer_0_board = np.full(self._board_size, BoardStatus.DOT, dtype=np.int32)
+        self._layer_1_pacman = np.full(self._board_size, BoardStatus.EMPTY, dtype=np.int32)
+        #self._layer_2_empty = np.full(self._board_size, BoardStatus.EMPTY, dtype=np.int32)
 
         # Initialise PacMan position
         self.position = np.array([
@@ -173,7 +182,7 @@ class PacMan_v1(gym.Env):
 
         # If the agent has done 1000+ moves and still didn't clear the board the episode is over too
         elif self._nr_moves >= self._max_moves:
-            print("Board not cleared")
+            logging.debug("Board not cleared")
             self.is_over = True
 
         ret = (self._get_observation(), reward, self.is_over, {})
@@ -186,11 +195,18 @@ class PacMan_v1(gym.Env):
         layer[position[0]][position[1]] = value
 
     def _get_observation(self):
-        return np.array([
-            self._layer_0_board,
-            self._layer_1_pacman,
-            self._layer_2_empty
-        ])
+        return {
+            'board': self._layer_0_board.flatten(),
+            'position': self._layer_1_pacman.flatten(),
+        }
+        #return {
+        #    'board': self._layer_0_board, #.flatten(),
+        #    'position': self._layer_1_pacman, #.flatten(),
+        #}
+        #return np.array([
+        #    self._layer_0_board,
+        #    self._layer_1_pacman,
+        #])
 
     def render(self, mode='human'):
         return
