@@ -52,6 +52,8 @@ class PacMan_v1(gym.Env):
     - visiting a new cell is -1 + 1 = 0
     """
 
+    _repeat_multiplier_ = 4     # prevent "kernel is bigger than input" error
+
     def __init__(self, board_size=(5,5), max_moves=100):
         """
         Initialise the environment.
@@ -84,18 +86,12 @@ class PacMan_v1(gym.Env):
         self.action_space = spaces.Discrete(max(Action) + 1)
 
         # Observation is what we return back to the agent
-        self.observation_space = spaces.Dict({
-            'board': spaces.Box(low=min(BoardStatus), high=max(BoardStatus),
-                            #shape=self._board_size,
-                            shape=(self._board_size[0]*self._board_size[1],)
-                        ),
-            'position': spaces.Box(low=min(BoardStatus), high=max(BoardStatus),
-                            #shape=self._board_size,
-                            shape=(self._board_size[0]*self._board_size[1],)
-                        ),
-        })
-        #observation_shape = list(self._board_size) + [2]    # shape = [box[0], box[1], num_layers]
-        #self.observation_space = spaces.Box(low=min(BoardStatus), high=max(BoardStatus), shape=observation_shape, dtype=np.uint32)
+        # shape = [box[0], box[1], num_layers]
+        observation_shape = [
+            self._board_size[0]*self._repeat_multiplier_,
+            self._board_size[1]*self._repeat_multiplier_,
+            2 ]
+        self.observation_space = spaces.Box(low=min(BoardStatus), high=max(BoardStatus), shape=observation_shape, dtype=np.uint32)
 
         # Episode counter
         self._episode = 0
@@ -110,7 +106,6 @@ class PacMan_v1(gym.Env):
         -------
         observation (object): the initial observation of the space.
         """
-
 
         # Initialise the observation layers
         self._layer_0_board = np.full(self._board_size, BoardStatus.DOT, dtype=np.int32)
@@ -156,7 +151,6 @@ class PacMan_v1(gym.Env):
         # Increment moves
         self._nr_moves += 1
 
-
         # Is it a valid move?
         if action == Action.UP and self.position[0] > 0:
             self.position[0] -= 1
@@ -195,18 +189,10 @@ class PacMan_v1(gym.Env):
         layer[position[0]][position[1]] = value
 
     def _get_observation(self):
-        return {
-            'board': self._layer_0_board.flatten(),
-            'position': self._layer_1_pacman.flatten(),
-        }
-        #return {
-        #    'board': self._layer_0_board, #.flatten(),
-        #    'position': self._layer_1_pacman, #.flatten(),
-        #}
-        #return np.array([
-        #    self._layer_0_board,
-        #    self._layer_1_pacman,
-        #])
+        return np.stack([
+            self._layer_0_board,
+            self._layer_1_pacman,
+        ], axis=2).repeat(axis=0, repeats=self._repeat_multiplier_).repeat(axis=1, repeats=self._repeat_multiplier_)  # scale up the array to prevent "kernel is bigger than input" error
 
     def render(self, mode='human'):
         return
