@@ -54,7 +54,7 @@ class PacMan_v1(gym.Env):
 
     _repeat_multiplier_ = 4     # prevent "kernel is bigger than input" error
 
-    def __init__(self, board_size=(5,5), max_moves=100):
+    def __init__(self, board_size=(10,10), max_moves=200):
         """
         Initialise the environment.
 
