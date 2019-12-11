@@ -173,6 +173,8 @@ class PacMan_v1(gym.Env):
         if np.count_nonzero(self._layer_0_board == BoardStatus.DOT) == 0:
             logging.debug("Board cleared in %s steps", self._nr_moves)
             self.is_over = True
+            # Board cleared - bonus reward!
+            reward += self._board_size[0]*self._board_size[1]
 
         # If the agent has done 1000+ moves and still didn't clear the board the episode is over too
         elif self._nr_moves >= self._max_moves:
