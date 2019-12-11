@@ -17,12 +17,11 @@ from pacman_env import env_params, preset_validation_params
 # Graph Scheduling #
 ####################
 
-training_steps = 1000
 schedule_params = ScheduleParameters()
-schedule_params.improve_steps = TrainingSteps(training_steps)
-schedule_params.steps_between_evaluation_periods = EnvironmentEpisodes(100)
-schedule_params.evaluation_steps = EnvironmentEpisodes(20)
-schedule_params.heatup_steps = EnvironmentSteps(100)
+schedule_params.improve_steps = TrainingSteps(10000)
+schedule_params.steps_between_evaluation_periods = EnvironmentEpisodes(50)
+schedule_params.evaluation_steps = EnvironmentEpisodes(5)
+schedule_params.heatup_steps = EnvironmentSteps(0)
 
 #########
 # Agent #
@@ -47,7 +46,7 @@ agent_params.network_wrappers['main'].middleware_parameters.scheme = MiddlewareS
 agent_params.memory.max_size = (MemoryGranularity.Transitions, 40000)
 
 # E-Greedy schedule
-agent_params.exploration.epsilon_schedule = LinearSchedule(1.0, 0.01, training_steps/10)     # was 1.0, 0.01, 10000
+agent_params.exploration.epsilon_schedule = LinearSchedule(1.0, 0.01, schedule_params.improve_steps.num_steps)     # was 1.0, 0.01, 10000
 
 graph_manager = BasicRLGraphManager(agent_params=agent_params, env_params=env_params,
                                     schedule_params=schedule_params, vis_params=VisualizationParameters(),
