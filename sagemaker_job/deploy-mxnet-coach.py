@@ -1,3 +1,6 @@
+# From https://github.com/awslabs/amazon-sagemaker-examples/ ->
+#   -> reinforcement_learning/rl_cartpole_coach/src/deploy-mxnet-coach.py
+
 import os
 import json
 import mxnet as mx
